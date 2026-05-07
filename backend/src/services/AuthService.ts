@@ -22,9 +22,15 @@ export class AuthService {
         }
         
         // Gera o Token JWT (Vale por 1 dia)
+        const jwtSecret = process.env.JWT_SECRET;
+
+        if (!jwtSecret) {
+            throw new Error('JWT_SECRET não configurado.');
+        }
+
         const token = jwt.sign(
             { id: user.id, email: user.email }, 
-            process.env.JWT_SECRET as string, 
+            jwtSecret, 
             { expiresIn: '1d' }
         );
         // 3. Se chegou aqui, o login é válido!
