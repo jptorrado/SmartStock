@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { UserRepository } from '../repositories/UserRepository';
 
 export class AuthService {
@@ -19,13 +20,20 @@ export class AuthService {
         if (!isPasswordValid) {
             throw new Error('E-mail ou senha inválidos.');
         }
-
+        
+        // Gera o Token JWT (Vale por 1 dia)
+        const token = jwt.sign(
+            { id: user.id, email: user.email }, 
+            process.env.JWT_SECRET as string, 
+            { expiresIn: '1d' }
+        );
         // 3. Se chegou aqui, o login é válido!
         return {
             id: user.id,
             name: user.name,
             email: user.email,
-            role: user.role
+            role: user.role,
+            token: token
         };
     }
 }

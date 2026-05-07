@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // 1. Adicionado: Hook de navegação do React Router
 
 export const Login = () => {
     // Estados para armazenar o que o usuário digita
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
+    
+    // 2. Adicionado: Instância do navegador
+    const navigate = useNavigate(); 
 
     // Função engatilhada quando o formulário é submetido
     const handleLogin = async (e: React.FormEvent) => {
@@ -12,7 +16,8 @@ export const Login = () => {
         setErrorMsg(''); // Limpa erros antigos
 
         try {
-            const response = await fetch('http://localhost:3000/login', {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const response = await fetch(`${apiUrl}/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -28,9 +33,14 @@ export const Login = () => {
 
             const data = await response.json();
             
-            // Sucesso! Por enquanto, apenas exibimos no console.
+            // 3. Adicionado: Lógica Sênior de Sucesso (Sessão e Redirecionamento)
             console.log('Login Bem-Sucedido:', data);
-            alert(`Bem-vindo, ${data.user.name}!`);
+            
+            // Salva o "crachá" (Token) no navegador do usuário
+            localStorage.setItem('token', data.token); 
+            
+            // Redireciona imediatamente para o painel principal, cumprindo o critério da US01
+            navigate('/dashboard'); 
 
         } catch (error: any) {
             console.error('Erro no login:', error.message);
