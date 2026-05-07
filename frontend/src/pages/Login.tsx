@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // 1. Adicionado: Hook de navegação do React Router
 
 type LoginResponse = {
-    token?: string;
     user?: {
         token?: string;
     };
@@ -39,7 +38,7 @@ export const Login = () => {
             }
 
             const data: LoginResponse = await response.json();
-            const token = data.user?.token ?? data.token;
+            const token = data.user?.token;
 
             if (!token) {
                 throw new Error('Token não retornado na autenticação.');
