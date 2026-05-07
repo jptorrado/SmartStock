@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // 1. Adicionado: Hook de navegação do React Router
 
+type LoginResponse = {
+    token?: string;
+    user?: {
+        token?: string;
+    };
+};
+
 export const Login = () => {
     // Estados para armazenar o que o usuário digita
     const [email, setEmail] = useState('');
@@ -31,20 +38,26 @@ export const Login = () => {
                 throw new Error(errorData.error || 'Falha na autenticação');
             }
 
-            const data = await response.json();
+            const data: LoginResponse = await response.json();
+            const token = data.user?.token ?? data.token;
+
+            if (!token) {
+                throw new Error('Token não retornado na autenticação.');
+            }
             
             // 3. Adicionado: Lógica Sênior de Sucesso (Sessão e Redirecionamento)
             console.log('Login Bem-Sucedido:', data);
             
             // Salva o "crachá" (Token) no navegador do usuário
-            localStorage.setItem('token', data.token); 
+            localStorage.setItem('token', token); 
             
             // Redireciona imediatamente para o painel principal, cumprindo o critério da US01
             navigate('/dashboard'); 
 
-        } catch (error: any) {
-            console.error('Erro no login:', error.message);
-            setErrorMsg(error.message);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Erro no login.';
+            console.error('Erro no login:', message);
+            setErrorMsg(message);
         }
     };
 
