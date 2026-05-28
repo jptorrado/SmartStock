@@ -10,7 +10,10 @@ function App() {
         <Route path="/" element={<Login />} />
         
         {/* Rota protegida: Painel Principal */}
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/dashboard"
+          element={localStorage.getItem('token') ? <Dashboard /> : <Navigate to="/" replace />}
+        />
         
         {/* Rota de Fallback: Se o usuário digitar qualquer URL maluca, joga pro Login */}
         <Route path="*" element={<Navigate to="/" />} />
