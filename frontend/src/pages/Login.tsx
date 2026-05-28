@@ -22,7 +22,12 @@ export const Login = () => {
         setErrorMsg(''); // Limpa erros antigos
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL;
+            const apiUrl = import.meta.env.VITE_API_URL?.trim();
+
+            if (!apiUrl) {
+                throw new Error('Configuração ausente: defina VITE_API_URL para conectar ao servidor.');
+            }
+
             const response = await fetch(`${apiUrl}/login`, {
                 method: 'POST',
                 headers: {
