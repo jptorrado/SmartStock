@@ -1,22 +1,40 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. Adicionado: Hook de navegação do React Router
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+// Tipagem flexível para aceitar o token dentro do user ou solto
+type LoginResponse = {
+    user?: {
+        token?: string;
+    };
+    token?: string;
+};
 
 export const Login = () => {
-    // Estados para armazenar o que o usuário digita
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     
-    // 2. Adicionado: Instância do navegador
     const navigate = useNavigate(); 
 
-    // Função engatilhada quando o formulário é submetido
+    // NOSSO AJUSTE: Pula pro Dashboard se já estiver logado (evita F5)
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [navigate]);
+
     const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault(); // Impede a página de recarregar
-        setErrorMsg(''); // Limpa erros antigos
+        e.preventDefault(); 
+        setErrorMsg(''); 
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL;
+            const apiUrl = import.meta.env.VITE_API_URL?.trim();
+
+            if (!apiUrl) {
+                throw new Error('Configuração ausente: defina VITE_API_URL.');
+            }
+
             const response = await fetch(`${apiUrl}/login`, {
                 method: 'POST',
                 headers: {
@@ -25,35 +43,35 @@ export const Login = () => {
                 body: JSON.stringify({ email, password }),
             });
 
-            // O tratamento obrigatório do fetch que discutimos
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Falha na autenticação');
             }
 
-            const data = await response.json();
+            const data: LoginResponse = await response.json();
             
-            // 3. Adicionado: Lógica Sênior de Sucesso (Sessão e Redirecionamento)
-            console.log('Login Bem-Sucedido:', data);
-            
-            // Salva o "crachá" (Token) no navegador do usuário
-            localStorage.setItem('token', data.token); 
-            
-            // Redireciona imediatamente para o painel principal, cumprindo o critério da US01
-            navigate('/dashboard'); 
+            // A SACADA DO COPILOT: Puxa o token do lugar certo no Backend
+            const token = data.user?.token || data.token;
 
-        } catch (error: any) {
-            console.error('Erro no login:', error.message);
-            setErrorMsg(error.message);
+            if (!token) {
+                throw new Error('Token não retornado na autenticação.');
+            }
+            
+            localStorage.setItem('token', token); 
+            
+            // NOSSO AJUSTE: Redireciona com replace para limpar o histórico
+            navigate('/dashboard', { replace: true }); 
+
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Erro no login.';
+            setErrorMsg(message);
         }
     };
 
     return (
         <div style={{ padding: '50px', maxWidth: '400px', margin: '0 auto' }}>
             <h2>Login SmartStock</h2>
-            
             {errorMsg && <div style={{ color: 'red', marginBottom: '15px' }}>{errorMsg}</div>}
-
             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <input 
                     type="email" 

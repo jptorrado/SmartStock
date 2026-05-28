@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { AuthService } from '../services/AuthService';
 
 export class AuthController {
@@ -15,11 +16,21 @@ export class AuthController {
 
             const user = await this.authService.executeLogin(email, password);
 
-            // Por enquanto, retornamos os dados do utilizador. 
-            // Na próxima Sprint, geraremos o Token JWT aqui.
+            const secret = process.env.JWT_SECRET;
+            if (!secret) {
+                return res.status(500).json({ error: 'JWT_SECRET não configurado no servidor.' });
+            }
+
+            const token = jwt.sign(
+                { sub: user.id, email: user.email, role: user.role },
+                secret,
+                { expiresIn: '8h' }
+            );
+
             return res.status(200).json({
                 message: 'Login realizado com sucesso',
-                user
+                token,
+                user,
             });
         } catch (error: any) {
             return res.status(401).json({ error: error.message });

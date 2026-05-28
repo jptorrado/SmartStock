@@ -1,11 +1,19 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export function Dashboard() {
     const navigate = useNavigate();
 
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/', { replace: true });
+        }
+    }, [navigate]);
+
     const handleLogout = () => {
         localStorage.removeItem('token');
-        navigate('/');
+        navigate('/', { replace: true });
     };
 
     return (
