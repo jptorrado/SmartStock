@@ -20,7 +20,6 @@ services:
       interval: 10s
       timeout: 20s
       retries: 10
-      start_period: 30s
 
   backend:
     build:
@@ -31,10 +30,10 @@ services:
       - .env
     command: sh -c "npm install && npm run dev"
     ports:
-      - "3000:3000"
+      - "${PORT}:${PORT}"
     environment:
       - DB_HOST=db
-      - PORT=3000
+      - PORT=${PORT}
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
@@ -52,6 +51,8 @@ services:
     command: sh -c "npm install && npm run dev"
     ports:
       - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:${PORT}
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
