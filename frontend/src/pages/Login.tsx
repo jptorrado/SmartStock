@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Tipagem flexível para aceitar o token dentro do user ou solto
 type LoginResponse = {
     user?: {
         token?: string;
@@ -16,7 +15,6 @@ export const Login = () => {
     
     const navigate = useNavigate(); 
 
-    // NOSSO AJUSTE: Pula pro Dashboard se já estiver logado (evita F5)
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -50,7 +48,6 @@ export const Login = () => {
 
             const data: LoginResponse = await response.json();
             
-            // A SACADA DO COPILOT: Puxa o token do lugar certo no Backend
             const token = data.user?.token || data.token;
 
             if (!token) {
@@ -59,7 +56,6 @@ export const Login = () => {
             
             localStorage.setItem('token', token); 
             
-            // NOSSO AJUSTE: Redireciona com replace para limpar o histórico
             navigate('/dashboard', { replace: true }); 
 
         } catch (error: unknown) {
