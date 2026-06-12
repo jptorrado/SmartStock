@@ -5,9 +5,16 @@ import mysql from 'mysql2/promise';
 import { UserRepository } from './repositories/UserRepository';
 import { AuthService } from './services/AuthService';
 import { AuthController } from './controllers/AuthController';
+
+// Importações da US02 (CRUD de Produtos)
 import { ProductRepository } from './repositories/ProductRepository';
 import { ProductService } from './services/ProductService';
 import { ProductController } from './controllers/ProductController';
+
+// Importações da US03 (Entrada de Estoque)
+import { StockRepository } from './repositories/StockRepository';
+import { StockService } from './services/StockService';
+import { StockController } from './controllers/StockController';
 
 const app = express();
 app.use(express.json());
@@ -31,18 +38,32 @@ const startServer = async () => {
         const connection = await mysql.createConnection(dbConfig);
         console.log('✅ MySQL conectado com sucesso.');
 
+        // Instanciando classes de Autenticação (US01)
         const userRepository = new UserRepository(connection);
         const authService = new AuthService(userRepository);
         const authController = new AuthController(authService);
+        
+        // Instanciando classes de Produtos (US02)
         const productRepository = new ProductRepository(connection);
         const productService = new ProductService(productRepository);
         const productController = new ProductController(productService);
 
+        // Instanciando as classes de Estoque (US03)
+        const stockRepository = new StockRepository(connection);
+        const stockService = new StockService(stockRepository);
+        const stockController = new StockController(stockService);
+
+        // Rota de Login
         app.post('/login', (req, res) => authController.login(req, res));
+        
+        // Rotas de Produtos (US02)
         app.get('/products', (req, res) => productController.getAll(req, res));
         app.post('/products', (req, res) => productController.create(req, res));
         app.put('/products/:id', (req, res) => productController.update(req, res));
         app.delete('/products/:id', (req, res) => productController.delete(req, res));
+
+        // Rota de Entrada de Estoque (US03)
+        app.post('/estoque/entrada', (req, res) => stockController.entry(req, res));
 
         const PORT = process.env.PORT || 3000;
         app.listen(Number(PORT), '0.0.0.0', () => {
