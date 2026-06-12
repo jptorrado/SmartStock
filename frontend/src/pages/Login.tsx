@@ -47,7 +47,6 @@ export const Login = () => {
             }
 
             const data: LoginResponse = await response.json();
-            
             const token = data.user?.token || data.token;
 
             if (!token) {
@@ -55,7 +54,6 @@ export const Login = () => {
             }
             
             localStorage.setItem('token', token); 
-            
             navigate('/dashboard', { replace: true }); 
 
         } catch (error: unknown) {
@@ -65,26 +63,48 @@ export const Login = () => {
     };
 
     return (
-        <div style={{ padding: '50px', maxWidth: '400px', margin: '0 auto' }}>
-            <h2>Login SmartStock</h2>
-            {errorMsg && <div style={{ color: 'red', marginBottom: '15px' }}>{errorMsg}</div>}
-            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <input 
-                    type="email" 
-                    placeholder="E-mail" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                />
-                <input 
-                    type="password" 
-                    placeholder="Senha" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
-                <button type="submit">Entrar</button>
-            </form>
+        /* Fundo Preto Puro e alinhamento flex centralizado */
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#000000', color: '#fff', fontFamily: 'sans-serif' }}>
+            
+            {/* Card de Login alinhado com o design do Dashboard */}
+            <div style={{ backgroundColor: '#111111', padding: '40px', borderRadius: '8px', border: '1px solid #333', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+                <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                    <h2 style={{ color: '#deff9a', margin: 0, fontSize: '28px' }}>SmartStock</h2>
+                    <p style={{ color: '#9ca3af', margin: '5px 0 0 0', fontSize: '14px' }}>Controle de Acesso Seguro</p>
+                </div>
+                
+                {errorMsg && <div style={{ backgroundColor: '#7f1d1d', color: '#fca5a5', padding: '12px', borderRadius: '6px', marginBottom: '20px', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}>❌ {errorMsg}</div>}
+
+                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ fontSize: '14px', color: '#9ca3af' }}>E-mail corporativo</label>
+                        <input 
+                            type="email" 
+                            placeholder="admin@supermercado.com" 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', boxSizing: 'border-box' }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ fontSize: '14px', color: '#9ca3af' }}>Senha</label>
+                        <input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', boxSizing: 'border-box' }}
+                        />
+                    </div>
+
+                    <button type="submit" style={{ width: '100%', backgroundColor: '#deff9a', color: '#000', border: 'none', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', marginTop: '10px' }}>
+                        Entrar no Sistema
+                    </button>
+                </form>
+            </div>
         </div>
     );
 };

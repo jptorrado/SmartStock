@@ -5,8 +5,10 @@ import mysql from 'mysql2/promise';
 import { UserRepository } from './repositories/UserRepository';
 import { AuthService } from './services/AuthService';
 import { AuthController } from './controllers/AuthController';
+import { ProductRepository } from './repositories/ProductRepository';
+import { ProductService } from './services/ProductService';
+import { ProductController } from './controllers/ProductController';
 
-// Como o Docker já injetou as variáveis, não precisamos mais do dotenv.config() aqui.
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -32,8 +34,15 @@ const startServer = async () => {
         const userRepository = new UserRepository(connection);
         const authService = new AuthService(userRepository);
         const authController = new AuthController(authService);
+        const productRepository = new ProductRepository(connection);
+        const productService = new ProductService(productRepository);
+        const productController = new ProductController(productService);
 
         app.post('/login', (req, res) => authController.login(req, res));
+        app.get('/products', (req, res) => productController.getAll(req, res));
+        app.post('/products', (req, res) => productController.create(req, res));
+        app.put('/products/:id', (req, res) => productController.update(req, res));
+        app.delete('/products/:id', (req, res) => productController.delete(req, res));
 
         const PORT = process.env.PORT || 3000;
         app.listen(Number(PORT), '0.0.0.0', () => {
