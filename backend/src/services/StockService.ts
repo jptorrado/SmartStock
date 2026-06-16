@@ -34,4 +34,23 @@ export class StockService {
         await this.stockRepository.registerEntry(produtoId, quantidade);
         return { message: 'Entrada registrada com sucesso e saldo atualizado.' };
     }
+    // --- MÉTODO NOVO DA US04 ---
+    async removeEntry(produtoId: number, quantidade: number) {
+        if (!produtoId || quantidade <= 0) {
+            throw new Error('Produto inválido ou a quantidade de saída deve ser maior que zero.');
+        }
+        
+        const currentStock = await this.stockRepository.getStock(produtoId);
+        
+        // Validação da US04: Bloqueio de saldo insuficiente
+        if (currentStock < quantidade) {
+            throw new Error(`Saldo insuficiente para realizar esta baixa. Estoque atual: ${currentStock}`);
+        }
+
+        await this.stockRepository.registerOutput(produtoId, quantidade);
+        return { message: 'Saída registrada com sucesso.' };
+    }
+    async listMovements() {
+        return await this.stockRepository.getMovements();
+    }
 }

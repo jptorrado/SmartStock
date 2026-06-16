@@ -65,6 +65,12 @@ const startServer = async () => {
         // Rota de Entrada de Estoque (US03)
         app.post('/estoque/entrada', (req, res) => stockController.entry(req, res));
 
+        // NOVA Rota de Saída de Estoque (US04)
+        app.post('/estoque/saida', (req, res) => stockController.output(req, res));
+
+        // Rota de Histórico de Auditoria
+        app.get('/estoque/movimentacoes', (req, res) => stockController.getMovements(req, res));
+
         const PORT = process.env.PORT || 3000;
         app.listen(Number(PORT), '0.0.0.0', () => {
             console.log(`🚀 Servidor rodando na porta ${PORT}`);
