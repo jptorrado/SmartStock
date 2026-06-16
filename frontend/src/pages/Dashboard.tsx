@@ -36,6 +36,9 @@ export function Dashboard() {
 
     const [stockQuantities, setStockQuantities] = useState<Record<number, string>>({});
 
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -239,6 +242,16 @@ export function Dashboard() {
         }
     };
 
+    // Gera as categorias únicas para o Autocomplete e para o Filtro
+    const uniqueCategories = Array.from(new Set(products.map(p => p.category))).sort();
+
+    const filteredProducts = products.filter(product => {
+        const matchSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            product.barcode.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchCategory = selectedCategory === '' || product.category === selectedCategory;
+        return matchSearch && matchCategory;
+    });
+
     return (
         <div style={{ padding: '40px', color: '#f3f4f6', backgroundColor: '#000000', minHeight: '100vh', fontFamily: 'sans-serif' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #222', paddingBottom: '20px', marginBottom: '30px' }}>
@@ -263,7 +276,6 @@ export function Dashboard() {
                 <button onClick={() => { localStorage.removeItem('token'); navigate('/'); }} style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
             </div>
 
-            {/* === CONTAINER DE NOTIFICAÇÕES FLUTUANTE (OVERLAY) === */}
             <div style={{ position: 'fixed', top: '30px', right: '30px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '300px' }}>
                 {errorMsg && (
                     <div style={{ backgroundColor: '#7f1d1d', color: '#fca5a5', padding: '15px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }}>
@@ -279,7 +291,6 @@ export function Dashboard() {
                     </div>
                 )}
             </div>
-            {/* ======================================================== */}
 
             {activeTab === 'estoque' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.2fr', gap: '30px' }}>
@@ -305,7 +316,22 @@ export function Dashboard() {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <label style={{ fontSize: '13px', color: '#9ca3af' }}>Categoria</label>
-                                <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} required placeholder="Ex: Mercearia, Bebidas" style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
+                                {/* === NOVO: Input de Categoria com Autocomplete === */}
+                                <input 
+                                    type="text" 
+                                    value={category} 
+                                    onChange={(e) => setCategory(e.target.value)} 
+                                    required 
+                                    placeholder="Ex: Mercearia, Bebidas" 
+                                    list="category-suggestions" 
+                                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} 
+                                />
+                                <datalist id="category-suggestions">
+                                    {uniqueCategories.map(cat => (
+                                        <option key={cat} value={cat} />
+                                    ))}
+                                </datalist>
+                                {/* =============================================== */}
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
@@ -324,8 +350,32 @@ export function Dashboard() {
                     <div style={{ backgroundColor: '#111111', padding: '25px', borderRadius: '8px', border: '1px solid #222' }}>
                         <h2 style={{ color: '#deff9a', marginTop: 0, marginBottom: '20px', fontSize: '20px' }}>📋 Estoque</h2>
                         
-                        {products.length === 0 ? (
-                            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>Nenhum produto cadastrado.</p>
+                        <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
+                            <input 
+                                type="text" 
+                                placeholder="🔍 Buscar por Nome ou Código de Barras..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{ flex: 1, padding: '12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', fontSize: '14px' }}
+                            />
+                            <select 
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                style={{ width: '220px', padding: '12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', fontSize: '14px', cursor: 'pointer' }}
+                            >
+                                <option value="">Todas as Categorias</option>
+                                {uniqueCategories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        {filteredProducts.length === 0 ? (
+                            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0', fontSize: '16px' }}>
+                                {products.length === 0 
+                                    ? "Nenhum produto cadastrado." 
+                                    : "Nenhum produto encontrado correspondente a este filtro."}
+                            </p>
                         ) : (
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
@@ -339,7 +389,7 @@ export function Dashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {products.map((product) => (
+                                    {filteredProducts.map((product) => (
                                         <tr key={product.id} style={{ borderBottom: '1px solid #222', height: '60px' }}>
                                             <td style={{ padding: '12px' }}>
                                                 <div style={{ fontWeight: 'bold' }}>{product.name}</div>
