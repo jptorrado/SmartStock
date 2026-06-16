@@ -49,4 +49,23 @@ export class StockController {
             return res.status(400).json({ error: error.message });
         }
     }
+    // --- MÉTODO NOVO DA US04 ---
+    async output(req: Request, res: Response) {
+        try {
+            const { produtoId, quantidade } = req.body;
+            const result = await this.stockService.removeEntry(Number(produtoId), Number(quantidade));
+            return res.status(200).json(result);
+        } catch (error: any) {
+            // O status 400 devolve a mensagem exata ("Saldo insuficiente") para ser exibida na tela
+            return res.status(400).json({ error: error.message });
+        }
+    }
+    async getMovements(req: Request, res: Response) {
+        try {
+            const movements = await this.stockService.listMovements();
+            return res.status(200).json(movements);
+        } catch (error: any) {
+            return res.status(500).json({ error: 'Erro ao buscar histórico de movimentações.' });
+        }
+    }
 }

@@ -17,12 +17,13 @@ CREATE TABLE IF NOT EXISTS products (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabela de Auditoria (Histórico de Movimentações)
 CREATE TABLE IF NOT EXISTS movimentacoes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     produto_id INT NOT NULL,
-    quantidade INT NOT NULL,
     tipo ENUM('entrada', 'saida') NOT NULL,
-    data_movimentacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    quantidade INT NOT NULL,
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (produto_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
