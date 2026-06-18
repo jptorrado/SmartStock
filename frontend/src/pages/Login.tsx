@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// ADIÇÃO US06: Tipagem atualizada para reconhecer o campo 'role' vindo do Backend
 type LoginResponse = {
     user?: {
         token?: string;
+        role?: string;
     };
     token?: string;
+    role?: string;
 };
 
 export const Login = () => {
@@ -47,13 +50,22 @@ export const Login = () => {
             }
 
             const data: LoginResponse = await response.json();
+            
+            // ADIÇÃO US06: Captura do token e do nível de acesso (role)
             const token = data.user?.token || data.token;
+            const role = data.user?.role || data.role;
 
             if (!token) {
                 throw new Error('Token não retornado na autenticação.');
             }
             
             localStorage.setItem('token', token); 
+            
+            // ADIÇÃO US06: Salva o role no navegador para o Dashboard saber quem é o usuário
+            if (role) {
+                localStorage.setItem('role', role);
+            }
+            
             navigate('/dashboard', { replace: true }); 
 
         } catch (error: unknown) {
@@ -79,8 +91,7 @@ export const Login = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ fontSize: '14px', color: '#9ca3af' }}>E-mail corporativo</label>
                         <input 
-                            type="email" 
-                            placeholder="admin@supermercado.com" 
+                            type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -92,7 +103,6 @@ export const Login = () => {
                         <label style={{ fontSize: '14px', color: '#9ca3af' }}>Senha</label>
                         <input 
                             type="password" 
-                            placeholder="••••••••" 
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required

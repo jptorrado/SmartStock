@@ -18,12 +18,21 @@ type Movement = {
     data_hora: string;
 };
 
+// --- ADIÇÃO US06: Tipagem de Usuário ---
+type User = {
+    id: number;
+    name: string;
+    email: string;
+    role: 'admin' | 'operator';
+};
+
 export function Dashboard() {
     const navigate = useNavigate();
     
-    const [activeTab, setActiveTab] = useState<'estoque' | 'historico'>('estoque');
+    // --- ADIÇÃO US06: Nova aba 'usuarios' ---
+    const [activeTab, setActiveTab] = useState<'estoque' | 'historico' | 'usuarios'>('estoque');
+    
     const [movements, setMovements] = useState<Movement[]>([]);
-
     const [products, setProducts] = useState<Product[]>([]);
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
@@ -39,6 +48,15 @@ export function Dashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
 
+    // --- ADIÇÃO US06: Estados do Painel de Administração ---
+    const [users, setUsers] = useState<User[]>([]);
+    const [userName, setUserName] = useState('');
+    const [userEmail, setUserEmail] = useState('');
+    const [userPassword, setUserPassword] = useState('');
+    const [userRole, setUserRole] = useState<'admin' | 'operator'>('operator');
+    
+    const userRoleLocal = localStorage.getItem('role');
+
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -46,8 +64,12 @@ export function Dashboard() {
         } else {
             loadProducts();
             loadMovements();
+            // --- ADIÇÃO US06: Carrega usuários apenas se for admin ---
+            if (userRoleLocal === 'admin') {
+                loadUsers();
+            }
         }
-    }, [navigate]);
+    }, [navigate, userRoleLocal]);
 
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout>;
@@ -59,6 +81,12 @@ export function Dashboard() {
         }
         return () => clearTimeout(timer);
     }, [successMsg, errorMsg]);
+
+    // --- ADIÇÃO US06: Headers de Autenticação para o Middleware ---
+    const getAuthHeaders = () => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+    });
 
     const loadProducts = async () => {
         try {
@@ -86,6 +114,15 @@ export function Dashboard() {
         } catch (err) {
             console.error('Erro ao carregar movimentações');
         }
+    };
+
+    // --- ADIÇÃO US06: Carregar Usuários ---
+    const loadUsers = async () => {
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const response = await fetch(`${apiUrl}/users`, { headers: getAuthHeaders() });
+            if (response.ok) setUsers(await response.json());
+        } catch (err) { console.error('Erro ao carregar usuários'); }
     };
 
     const handleAddStock = async (productId: number) => {
@@ -242,6 +279,50 @@ export function Dashboard() {
         }
     };
 
+    // --- ADIÇÃO US06: Ações de Administração ---
+    const handleUserSubmit = async (e: React.FormEvent) => {
+        e.preventDefault(); setErrorMsg(''); setSuccessMsg('');
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const response = await fetch(`${apiUrl}/users`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ name: userName, email: userEmail, password: userPassword, role: userRole })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setSuccessMsg('Usuário criado com sucesso!');
+                setUserName(''); setUserEmail(''); setUserPassword(''); setUserRole('operator');
+                loadUsers();
+            } else { setErrorMsg(data.error || 'Erro ao criar usuário.'); }
+        } catch (err) { setErrorMsg('Erro no servidor.'); }
+    };
+
+    const handleResetPassword = async (userId: number) => {
+        const newPassword = window.prompt('Digite a nova senha para este usuário:');
+        if (!newPassword) return;
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const response = await fetch(`${apiUrl}/users/${userId}/password`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ newPassword })
+            });
+            if (response.ok) { setSuccessMsg('Senha redefinida com sucesso.'); } 
+            else { const d = await response.json(); setErrorMsg(d.error); }
+        } catch (err) { setErrorMsg('Erro no servidor.'); }
+    };
+
+    const handleDeleteUser = async (userId: number) => {
+        if (!window.confirm('Excluir este usuário? O acesso dele será revogado.')) return;
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const response = await fetch(`${apiUrl}/users/${userId}`, { method: 'DELETE', headers: getAuthHeaders() });
+            if (response.ok) { setSuccessMsg('Usuário removido.'); loadUsers(); } 
+            else { const d = await response.json(); setErrorMsg(d.error); }
+        } catch (err) { setErrorMsg('Erro no servidor.'); }
+    };
+
     // Gera as categorias únicas para o Autocomplete e para o Filtro
     const uniqueCategories = Array.from(new Set(products.map(p => p.category))).sort();
 
@@ -273,7 +354,22 @@ export function Dashboard() {
                         </button>
                     </div>
                 </div>
-                <button onClick={() => { localStorage.removeItem('token'); navigate('/'); }} style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    {/* --- ADIÇÃO US06: Botão de Admin protegido --- */}
+                    {userRoleLocal === 'admin' && (
+                        <button 
+                            onClick={() => setActiveTab('usuarios')} 
+                            style={{ 
+                                backgroundColor: activeTab === 'usuarios' ? '#3b82f6' : 'transparent', 
+                                color: activeTab === 'usuarios' ? '#fff' : '#60a5fa', 
+                                border: '1px solid #3b82f6', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' 
+                            }}
+                        >
+                            👥 Gerenciar Usuários
+                        </button>
+                    )}
+                    <button onClick={() => { localStorage.clear(); navigate('/'); }} style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
+                </div>
             </div>
 
             <div style={{ position: 'fixed', top: '30px', right: '30px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '300px' }}>
@@ -292,6 +388,69 @@ export function Dashboard() {
                 )}
             </div>
 
+            {/* --- ADIÇÃO US06: Aba de Administração --- */}
+            {activeTab === 'usuarios' && userRoleLocal === 'admin' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.2fr', gap: '30px' }}>
+                    <div style={{ backgroundColor: '#111111', padding: '25px', borderRadius: '8px', border: '1px solid #222', height: 'fit-content' }}>
+                        <h2 style={{ color: '#60a5fa', marginTop: 0, marginBottom: '20px', fontSize: '20px' }}>➕ Cadastrar Operador</h2>
+                        <form onSubmit={handleUserSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>Nome Completo</label>
+                                <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>E-mail de Acesso</label>
+                                <input type="email" value={userEmail} onChange={(e) => setUserEmail(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>Senha Inicial</label>
+                                <input type="password" value={userPassword} onChange={(e) => setUserPassword(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>Nível de Permissão</label>
+                                <select value={userRole} onChange={(e) => setUserRole(e.target.value as 'admin' | 'operator')} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', cursor: 'pointer' }}>
+                                    <option value="operator">Operador Comum</option>
+                                    <option value="admin">Administrador (Total)</option>
+                                </select>
+                            </div>
+                            <button type="submit" style={{ marginTop: '10px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Criar Credencial</button>
+                        </form>
+                    </div>
+
+                    <div style={{ backgroundColor: '#111111', padding: '25px', borderRadius: '8px', border: '1px solid #222' }}>
+                        <h2 style={{ color: '#60a5fa', marginTop: 0, marginBottom: '20px', fontSize: '20px' }}>🔐 Controle de Acesso Ativo</h2>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '2px solid #222', color: '#9ca3af', fontSize: '14px' }}>
+                                    <th style={{ padding: '12px' }}>Usuário</th>
+                                    <th style={{ padding: '12px' }}>Nível de Acesso</th>
+                                    <th style={{ padding: '12px', textAlign: 'right' }}>Ações de Segurança</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.map((user) => (
+                                    <tr key={user.id} style={{ borderBottom: '1px solid #222' }}>
+                                        <td style={{ padding: '12px' }}>
+                                            <div style={{ fontWeight: 'bold' }}>{user.name}</div>
+                                            <div style={{ fontSize: '12px', color: '#6b7280' }}>{user.email}</div>
+                                        </td>
+                                        <td style={{ padding: '12px' }}>
+                                            <span style={{ backgroundColor: user.role === 'admin' ? '#1e3a8a' : '#222', color: user.role === 'admin' ? '#93c5fd' : '#d1d5db', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                                            <button onClick={() => handleResetPassword(user.id)} style={{ backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', marginRight: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>Resetar Senha</button>
+                                            <button onClick={() => handleDeleteUser(user.id)} style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>Excluir Conta</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {activeTab === 'estoque' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.2fr', gap: '30px' }}>
                     <div style={{ backgroundColor: '#111111', padding: '25px', borderRadius: '8px', border: '1px solid #222', height: 'fit-content' }}>
@@ -306,14 +465,31 @@ export function Dashboard() {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <label style={{ fontSize: '13px', color: '#9ca3af' }}>Código de Barras</label>
-                                <input type="text" value={barcode} onChange={(e) => setBarcode(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
+                                <input 
+                                    type="text" 
+                                    value={barcode} 
+                                    onChange={(e) => setBarcode(e.target.value.replace(/\D/g, ''))} 
+                                    required 
+                                    inputMode="numeric"
+                                    pattern="\d+"
+                                    title="O código de barras deve conter apenas números"
+                                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <label style={{ fontSize: '13px', color: '#9ca3af' }}>Preço de Venda (R$)</label>
-                                <input type="number" step="0.01" min="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
+                                <input 
+                                    type="text" 
+                                    value={price} 
+                                    onChange={(e) => {
+                                        let sanitized = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                                        setPrice(sanitized);
+                                    }} 
+                                    required 
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
                             </div>
-
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <label style={{ fontSize: '13px', color: '#9ca3af' }}>Categoria</label>
                                 {/* === NOVO: Input de Categoria com Autocomplete === */}
