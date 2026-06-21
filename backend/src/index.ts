@@ -81,7 +81,7 @@ const startServer = async () => {
         // Rotas de Administração (US06) - Totalmente blindadas pelo middleware
         app.get('/users', adminMiddleware, (req, res) => userController.list(req, res));
         app.post('/users', adminMiddleware, (req, res) => userController.create(req, res));
-        app.put('/users/:id/password', adminMiddleware, (req, res) => userController.resetPassword(req, res));
+        app.put('/users/:id', adminMiddleware, (req, res) => userController.update(req, res));
         app.delete('/users/:id', adminMiddleware, (req, res) => userController.delete(req, res));
 
         const PORT = process.env.PORT || 3000;

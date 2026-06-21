@@ -40,6 +40,20 @@ export class UserRepository {
         return result.insertId;
     }
 
+    async update(id: number, name: string, email: string, role: string, passwordHash?: string): Promise<void> {
+            if (passwordHash) {
+                await this.db.execute(
+                    'UPDATE users SET name = ?, email = ?, role = ?, password_hash = ? WHERE id = ?',
+                    [name, email, role, passwordHash, id]
+                );
+            } else {
+                await this.db.execute(
+                    'UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?',
+                    [name, email, role, id]
+                );
+            }
+        }
+
     async updatePassword(userId: number, passwordHash: string): Promise<void> {
         await this.db.execute(
             'UPDATE users SET password_hash = ? WHERE id = ?', // <-- Ajustado para password_hash

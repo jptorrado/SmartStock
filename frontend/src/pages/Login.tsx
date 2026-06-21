@@ -82,7 +82,6 @@ export const Login = () => {
             <div style={{ backgroundColor: '#111111', padding: '40px', borderRadius: '8px', border: '1px solid #333', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
                 <div style={{ textAlign: 'center', marginBottom: '30px' }}>
                     <h2 style={{ color: '#deff9a', margin: 0, fontSize: '28px' }}>SmartStock</h2>
-                    <p style={{ color: '#9ca3af', margin: '5px 0 0 0', fontSize: '14px' }}>Controle de Acesso Seguro</p>
                 </div>
                 
                 {errorMsg && <div style={{ backgroundColor: '#7f1d1d', color: '#fca5a5', padding: '12px', borderRadius: '6px', marginBottom: '20px', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}>❌ {errorMsg}</div>}

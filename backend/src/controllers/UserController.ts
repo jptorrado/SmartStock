@@ -23,12 +23,12 @@ export class UserController {
         }
     }
 
-    async resetPassword(req: Request, res: Response) {
+    async update(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const { newPassword } = req.body;
-            await this.userService.resetPassword(Number(id), newPassword);
-            return res.status(200).json({ message: 'Senha redefinida com sucesso.' });
+            const { name, email, role, password } = req.body;
+            await this.userService.updateUser(Number(id), name, email, role, password);
+            return res.status(200).json({ message: 'Credencial atualizada com sucesso.' });
         } catch (error: any) {
             return res.status(400).json({ error: error.message });
         }
