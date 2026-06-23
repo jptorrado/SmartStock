@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import mysql from 'mysql2/promise';
 
+import { DatabaseManager } from './database/DatabaseManager';
 import { UserRepository } from './repositories/UserRepository';
 import { AuthService } from './services/AuthService';
 import { AuthController } from './controllers/AuthController';
@@ -27,36 +28,27 @@ app.use(cors());
 
 const startServer = async () => {
     try {
-        console.log('⏳ Tentando conectar ao banco de dados...');
-
-        const dbConfig = {
-            host: process.env.DB_HOST as string,
-            user: process.env.DB_USER as string,
-            password: process.env.DB_PASS as string,
-            database: process.env.DB_NAME as string,
-        };
-
-        if (!dbConfig.host || !dbConfig.user || !dbConfig.password || !dbConfig.database) {
-            throw new Error('Variáveis de ambiente (DB_HOST, DB_USER, etc) não encontradas.');
+        // Validação preventiva das variáveis de ambiente antes de inicializar serviços
+        if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASS || !process.env.DB_NAME) {
+            throw new Error('Variáveis de ambiente de banco de dados ausentes.');
         }
 
-        const connection = await mysql.createConnection(dbConfig);
-        console.log('✅ MySQL conectado com sucesso.');
+        // US07: Invocação do Singleton para obter o Pool único gerenciado
+        const dbPool = DatabaseManager.getInstance();
+        console.log('✅ Banco de dados acoplado via Pool Singleton.');
 
-        // Instanciando classes de Autenticação e Usuários (US01 e US06)
-        const userRepository = new UserRepository(connection);
+        // Instanciando as esteiras de injeção de dependência passando o Pool unificado
+        const userRepository = new UserRepository(dbPool);
         const authService = new AuthService(userRepository);
         const authController = new AuthController(authService);
         const userService = new UserService(userRepository);
         const userController = new UserController(userService);
         
-        // Instanciando classes de Produtos (US02)
-        const productRepository = new ProductRepository(connection);
+        const productRepository = new ProductRepository(dbPool);
         const productService = new ProductService(productRepository);
         const productController = new ProductController(productService);
 
-        // Instanciando as classes de Estoque (US03 e US04)
-        const stockRepository = new StockRepository(connection);
+        const stockRepository = new StockRepository(dbPool);
         const stockService = new StockService(stockRepository);
         const stockController = new StockController(stockService);
 
@@ -71,11 +63,7 @@ const startServer = async () => {
 
         // Rota de Entrada de Estoque (US03)
         app.post('/estoque/entrada', (req, res) => stockController.entry(req, res));
-
-        // Rota de Saída de Estoque (US04)
         app.post('/estoque/saida', (req, res) => stockController.output(req, res));
-
-        // Rota de Histórico de Auditoria
         app.get('/estoque/movimentacoes', (req, res) => stockController.getMovements(req, res));
 
         // Rotas de Administração (US06) - Totalmente blindadas pelo middleware
