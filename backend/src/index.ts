@@ -16,6 +16,11 @@ import { StockRepository } from './repositories/StockRepository';
 import { StockService } from './services/StockService';
 import { StockController } from './controllers/StockController';
 
+// Importação US06 (Gestão de Usuários)
+import { adminMiddleware } from './middlewares/adminMiddleware';
+import { UserService } from './services/UserService';
+import { UserController } from './controllers/UserController';
+
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -38,17 +43,19 @@ const startServer = async () => {
         const connection = await mysql.createConnection(dbConfig);
         console.log('✅ MySQL conectado com sucesso.');
 
-        // Instanciando classes de Autenticação (US01)
+        // Instanciando classes de Autenticação e Usuários (US01 e US06)
         const userRepository = new UserRepository(connection);
         const authService = new AuthService(userRepository);
         const authController = new AuthController(authService);
+        const userService = new UserService(userRepository);
+        const userController = new UserController(userService);
         
         // Instanciando classes de Produtos (US02)
         const productRepository = new ProductRepository(connection);
         const productService = new ProductService(productRepository);
         const productController = new ProductController(productService);
 
-        // Instanciando as classes de Estoque (US03)
+        // Instanciando as classes de Estoque (US03 e US04)
         const stockRepository = new StockRepository(connection);
         const stockService = new StockService(stockRepository);
         const stockController = new StockController(stockService);
@@ -65,11 +72,17 @@ const startServer = async () => {
         // Rota de Entrada de Estoque (US03)
         app.post('/estoque/entrada', (req, res) => stockController.entry(req, res));
 
-        // NOVA Rota de Saída de Estoque (US04)
+        // Rota de Saída de Estoque (US04)
         app.post('/estoque/saida', (req, res) => stockController.output(req, res));
 
         // Rota de Histórico de Auditoria
         app.get('/estoque/movimentacoes', (req, res) => stockController.getMovements(req, res));
+
+        // Rotas de Administração (US06) - Totalmente blindadas pelo middleware
+        app.get('/users', adminMiddleware, (req, res) => userController.list(req, res));
+        app.post('/users', adminMiddleware, (req, res) => userController.create(req, res));
+        app.put('/users/:id', adminMiddleware, (req, res) => userController.update(req, res));
+        app.delete('/users/:id', adminMiddleware, (req, res) => userController.delete(req, res));
 
         const PORT = process.env.PORT || 3000;
         app.listen(Number(PORT), '0.0.0.0', () => {
