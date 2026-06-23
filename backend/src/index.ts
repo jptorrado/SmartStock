@@ -18,6 +18,7 @@ import { StockService } from './services/StockService';
 import { StockController } from './controllers/StockController';
 
 // Importação US06 (Gestão de Usuários)
+import { authMiddleware } from './middlewares/authMiddleware';
 import { adminMiddleware } from './middlewares/adminMiddleware';
 import { UserService } from './services/UserService';
 import { UserController } from './controllers/UserController';
@@ -56,19 +57,19 @@ const startServer = async () => {
         app.post('/login', (req, res) => authController.login(req, res));
         
         // Rotas de Produtos (US02)
-        app.get('/products', (req, res) => productController.getAll(req, res));
-        app.post('/products', (req, res) => productController.create(req, res));
-        app.put('/products/:id', (req, res) => productController.update(req, res));
-        app.delete('/products/:id', (req, res) => productController.delete(req, res));
+        app.get('/products', authMiddleware, (req, res) => productController.getAll(req, res));
+        app.post('/products', authMiddleware, (req, res) => productController.create(req, res));
+        app.put('/products/:id', authMiddleware, (req, res) => productController.update(req, res));
+        app.delete('/products/:id', authMiddleware, (req, res) => productController.delete(req, res));
 
-        // Rota de Entrada de Estoque (US03)
-        app.post('/estoque/entrada', (req, res) => stockController.entry(req, res));
-        app.post('/estoque/saida', (req, res) => stockController.output(req, res));
-        app.get('/estoque/movimentacoes', (req, res) => stockController.getMovements(req, res));
+        // Rotas de Estoque (US03 e US04)
+        app.post('/estoque/entrada', authMiddleware, (req, res) => stockController.entry(req, res));
+        app.post('/estoque/saida', authMiddleware, (req, res) => stockController.output(req, res));
+        app.get('/estoque/movimentacoes', authMiddleware, (req, res) => stockController.getMovements(req, res));
 
-        // Rotas de Administração (US06) - Totalmente blindadas pelo middleware
-        app.get('/users', adminMiddleware, (req, res) => userController.list(req, res));
+        // Rotas de Administração (US06)
         app.post('/users', adminMiddleware, (req, res) => userController.create(req, res));
+        app.get('/users', adminMiddleware, (req, res) => userController.list(req, res));
         app.put('/users/:id', adminMiddleware, (req, res) => userController.update(req, res));
         app.delete('/users/:id', adminMiddleware, (req, res) => userController.delete(req, res));
 

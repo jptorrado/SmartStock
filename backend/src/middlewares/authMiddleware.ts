@@ -2,12 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { DatabaseManager } from '../database/DatabaseManager';
 
-interface TokenPayload {
-    id: number;
-    role: string;
-}
-
-export async function adminMiddleware(req: Request, res: Response, next: NextFunction): Promise<any> {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -31,18 +26,13 @@ export async function adminMiddleware(req: Request, res: Response, next: NextFun
 
         const db = DatabaseManager.getInstance();
         const [rows]: any = await db.execute('SELECT id, role FROM users WHERE id = ?', [decoded.id]);
-        
-        if (rows.length === 0) {
-            return res.status(401).json({ error: 'Acesso revogado. Sua credencial foi invalidada no sistema.' });
-        }
 
-        // A BARREIRA DE PATENTE
-        if (rows[0].role !== 'admin') {
-            return res.status(403).json({ error: 'Operação bloqueada. Privilégios de Administrador exigidos.' });
+        if (rows.length === 0) {
+            return res.status(401).json({ error: 'Acesso revogado. Sua credencial foi invalidada pelo administrador.' });
         }
 
         return next();
     } catch (error) {
         return res.status(401).json({ error: 'Sessão inválida ou expirada. Faça login novamente.' });
     }
-}
+};
