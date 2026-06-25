@@ -29,7 +29,7 @@ export class UserService {
             const adminCount = await this.userRepository.countAdmins();
             
             if (adminCount <= 1) {
-                throw new Error('O sistema deve ter no mínimoum Administrador ativo.');
+                throw new Error('O sistema não pode ficar sem um administrador ativo.');
             }
         }
 
@@ -53,7 +53,7 @@ export class UserService {
         if (user.role === 'admin' && role !== 'admin') {
             const adminCount = await this.userRepository.countAdmins();
             if (adminCount <= 1) {
-                throw new Error('Operação bloqueada: O sistema não pode ficar sem um Administrador ativo.');
+                throw new Error('O sistema não pode ficar sem um administrador ativo.');
             }
         }
 

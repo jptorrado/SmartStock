@@ -88,7 +88,8 @@ export function Dashboard() {
     const loadProducts = async () => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL;
-            const response = await fetch(`${apiUrl}/products`);
+            const response = await fetch(`${apiUrl}/products`, { headers: getAuthHeaders() });
+
             if (response.ok) {
                 const data = await response.json();
                 setProducts(data);
@@ -103,7 +104,8 @@ export function Dashboard() {
     const loadMovements = async () => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL;
-            const response = await fetch(`${apiUrl}/estoque/movimentacoes`);
+            const response = await fetch(`${apiUrl}/estoque/movimentacoes`, { headers: getAuthHeaders() });
+                      
             if (response.ok) {
                 const data = await response.json();
                 setMovements(data);
