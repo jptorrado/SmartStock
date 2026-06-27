@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import mysql from 'mysql2/promise';
 
 import { DatabaseManager } from './database/DatabaseManager';
 import { UserRepository } from './repositories/UserRepository';
@@ -22,6 +21,9 @@ import { authMiddleware } from './middlewares/authMiddleware';
 import { adminMiddleware } from './middlewares/adminMiddleware';
 import { UserService } from './services/UserService';
 import { UserController } from './controllers/UserController';
+
+// Importações US08: Categorias
+import { categoryController } from './controllers/CategoryController';
 
 const app = express();
 app.use(express.json());
@@ -45,11 +47,11 @@ const startServer = async () => {
         const userService = new UserService(userRepository);
         const userController = new UserController(userService);
         
-        const productRepository = new ProductRepository(dbPool);
+        const productRepository = new ProductRepository();
         const productService = new ProductService(productRepository);
         const productController = new ProductController(productService);
 
-        const stockRepository = new StockRepository(dbPool);
+        const stockRepository = new StockRepository();
         const stockService = new StockService(stockRepository);
         const stockController = new StockController(stockService);
 
@@ -72,6 +74,12 @@ const startServer = async () => {
         app.get('/users', adminMiddleware, (req, res) => userController.list(req, res));
         app.put('/users/:id', adminMiddleware, (req, res) => userController.update(req, res));
         app.delete('/users/:id', adminMiddleware, (req, res) => userController.delete(req, res));
+
+        // Controle de Categorias (Protegidas pelo authMiddleware)
+        app.get('/categories', authMiddleware, (req, res) => categoryController.getAll(req, res));
+        app.post('/categories', authMiddleware, (req, res) => categoryController.create(req, res));
+        app.put('/categories/:id', authMiddleware, (req, res) => categoryController.update(req, res));
+        app.delete('/categories/:id', authMiddleware, (req, res) => categoryController.delete(req, res));
 
         const PORT = process.env.PORT || 3000;
         app.listen(Number(PORT), '0.0.0.0', () => {

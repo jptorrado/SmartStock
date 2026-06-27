@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+type Category = {
+    id: number;
+    name: string;
+    description: string | null;
+    parent_id: number | null;
+    parent_name?: string;
+    status: 'active' | 'inactive';
+};
+
 type Product = {
     id: number;
     name: string;
     barcode: string;
     price: number;
-    category: string;
+    category_id: number;
     estoque_atual: number;
 };
 
@@ -28,10 +37,11 @@ type User = {
 export function Dashboard() {
     const navigate = useNavigate();
     
-    const [activeTab, setActiveTab] = useState<'estoque' | 'historico' | 'usuarios'>('estoque');
-    
+    const [activeTab, setActiveTab] = useState<'estoque' | 'categorias' | 'historico' | 'usuarios'>('estoque');
     const [movements, setMovements] = useState<Movement[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
 
@@ -39,14 +49,17 @@ export function Dashboard() {
     const [name, setName] = useState('');
     const [barcode, setBarcode] = useState('');
     const [price, setPrice] = useState('');
-    const [category, setCategory] = useState('');
-
+    const [productCategoryName, setProductCategoryName] = useState('');
     const [stockQuantities, setStockQuantities] = useState<Record<number, string>>({});
-
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
 
-    // ESTADOS DE USUÁRIO
+    const [editingCatId, setEditingCatId] = useState<number | null>(null);
+    const [catName, setCatName] = useState('');
+    const [catDesc, setCatDesc] = useState('');
+    const [catParentId, setCatParentId] = useState<string>('');
+    const [catStatus, setCatStatus] = useState<'active' | 'inactive'>('active');
+
     const [users, setUsers] = useState<User[]>([]);
     const [editingUserId, setEditingUserId] = useState<number | null>(null);
     const [userName, setUserName] = useState('');
@@ -61,6 +74,7 @@ export function Dashboard() {
         if (!token) {
             navigate('/', { replace: true });
         } else {
+            loadCategories();
             loadProducts();
             loadMovements();
             if (userRoleLocal === 'admin') {
@@ -84,6 +98,14 @@ export function Dashboard() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`
     });
+
+    const loadCategories = async () => {
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const response = await fetch(`${apiUrl}/categories`, { headers: getAuthHeaders() });
+            if (response.ok) setCategories(await response.json());
+        } catch (err) { console.error('Erro ao carregar categorias'); }
+    };
 
     const loadProducts = async () => {
         try {
@@ -123,6 +145,38 @@ export function Dashboard() {
         } catch (err) { console.error('Erro ao carregar usuários'); }
     };
 
+    // HANDLERS: CATEGORIAS
+    const clearCategoryForm = () => {
+        setEditingCatId(null); setCatName(''); setCatDesc(''); setCatParentId(''); setCatStatus('active');
+    };
+
+    const handleCategorySubmit = async (e: React.FormEvent) => {
+        e.preventDefault(); setErrorMsg(''); setSuccessMsg('');
+        const payload = { name: catName, description: catDesc, parent_id: catParentId ? Number(catParentId) : null, status: catStatus };
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const url = editingCatId ? `${apiUrl}/categories/${editingCatId}` : `${apiUrl}/categories`;
+            const method = editingCatId ? 'PUT' : 'POST';
+            const response = await fetch(url, { method, headers: getAuthHeaders(), body: JSON.stringify(payload) });
+            const data = await response.json();
+            if (response.ok) {
+                setSuccessMsg(editingCatId ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!');
+                clearCategoryForm(); loadCategories();
+            } else { setErrorMsg(data.error || 'Erro ao processar categoria.'); }
+        } catch (err) { setErrorMsg('Erro de comunicação com o servidor.'); }
+    };
+
+    const handleDeleteCategory = async (id: number) => {
+        if (!window.confirm('Tem certeza? Categorias com produtos vinculados não podem ser excluídas.')) return;
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL;
+            const response = await fetch(`${apiUrl}/categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+            if (response.ok) { setSuccessMsg('Categoria removida com sucesso.'); loadCategories(); } 
+            else { const d = await response.json(); setErrorMsg(d.error); }
+        } catch (err) { setErrorMsg('Erro no servidor.'); }
+    };
+
+    // HANDLERS: PRODUTOS
     const handleAddStock = async (productId: number) => {
         setErrorMsg(''); setSuccessMsg('');
         const qtyStr = stockQuantities[productId];
@@ -179,14 +233,31 @@ export function Dashboard() {
         setStockQuantities(prev => ({ ...prev, [productId]: value }));
     };
 
-    const clearForm = () => {
-        setEditingId(null); setName(''); setBarcode(''); setPrice(''); setCategory('');
+    const clearProductForm = () => {
+        setEditingId(null); setName(''); setBarcode(''); setPrice(''); setProductCategoryName('');
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const startEditProduct = (product: Product) => {
+        setEditingId(product.id); 
+        setName(product.name); 
+        setBarcode(product.barcode); 
+        setPrice(product.price.toString()); 
+        const cat = categories.find(c => c.id === product.category_id);
+        setProductCategoryName(cat ? cat.name : '');
+        setActiveTab('estoque');
+    };
+
+    const handleProductSubmit = async (e: React.FormEvent) => {
         e.preventDefault(); setErrorMsg(''); setSuccessMsg('');
+        
+        const selectedCat = categories.find(c => c.name.toLowerCase() === productCategoryName.toLowerCase() && c.status === 'active');
+        
+        if (!selectedCat) {
+            return setErrorMsg('Por favor, selecione ou digite uma categoria válida e ativa da lista.');
+        }
+
         const apiUrl = import.meta.env.VITE_API_URL;
-        const payload = { name, barcode, price: Number(price), category };
+        const payload = { name, barcode, price: Number(price), category_id: selectedCat.id };
 
         try {
             let response;
@@ -203,17 +274,12 @@ export function Dashboard() {
             const resData = await response.json();
             if (response.ok) {
                 setSuccessMsg(editingId ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!');
-                clearForm(); loadProducts();
+                clearProductForm(); loadProducts();
             } else { setErrorMsg(resData.error || 'Erro ao processar o produto.'); }
         } catch (err) { setErrorMsg('Erro de comunicação com o servidor.'); }
     };
 
-    const startEdit = (product: Product) => {
-        setEditingId(product.id); setName(product.name); setBarcode(product.barcode); setPrice(product.price.toString()); setCategory(product.category);
-        setActiveTab('estoque');
-    };
-
-    const handleDelete = async (id: number) => {
+    const handleDeleteProduct = async (id: number) => {
         if (!window.confirm('Tem certeza de que deseja remover este produto do catálogo?')) return;
         setErrorMsg(''); setSuccessMsg('');
         try {
@@ -221,7 +287,7 @@ export function Dashboard() {
             const response = await fetch(`${apiUrl}/products/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
             if (response.ok) {
                 setSuccessMsg('Produto removido com sucesso.');
-                if (editingId === id) clearForm();
+                if (editingId === id) clearProductForm();
                 loadProducts();
             } else {
                 const resData = await response.json(); setErrorMsg(resData.error || 'Erro ao excluir o produto.');
@@ -229,7 +295,7 @@ export function Dashboard() {
         } catch (err) { setErrorMsg('Erro de comunicação com o servidor.'); }
     };
 
-    // FUNÇÕES DE USUÁRIO EXPANDIDAS
+    // HANDLERS: USUÁRIOS
     const clearUserForm = () => {
         setEditingUserId(null); setUserName(''); setUserEmail(''); setUserPassword(''); setUserRole('operator');
     };
@@ -268,13 +334,60 @@ export function Dashboard() {
         } catch (err) { setErrorMsg('Erro no servidor.'); }
     };
 
-    const uniqueCategories = Array.from(new Set(products.map(p => p.category))).sort();
+    // MOTORES DE ÁRVORE E BUSCA FACETADA
+    const getCategoryName = (id: number) => {
+        const cat = categories.find(c => c.id === id);
+        return cat ? cat.name : 'Categoria Inválida';
+    };
 
-    const filteredProducts = products.filter(product => {
-        const matchSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            product.barcode.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchCategory = selectedCategory === '' || product.category === selectedCategory;
-        return matchSearch && matchCategory;
+    const getDescendantCategoryIds = (categoryId: number): number[] => {
+        let ids = [categoryId]; 
+        const children = categories.filter(c => c.parent_id === categoryId);
+        children.forEach(child => {
+            ids = [...ids, ...getDescendantCategoryIds(child.id)];
+        });
+        return ids;
+    };
+
+    const getAncestorCategoryIds = (categoryId: number): number[] => {
+        let ids = [categoryId];
+        const cat = categories.find(c => c.id === categoryId);
+        if (cat && cat.parent_id) {
+            ids = [...ids, ...getAncestorCategoryIds(cat.parent_id)];
+        }
+        return ids;
+    };
+
+    const getCategoryProductCount = (categoryId: number): number => {
+        const directProductsCount = products.filter(p => p.category_id === categoryId).length;
+        const childCategories = categories.filter(c => c.parent_id === categoryId);
+        const childProductsCount = childCategories.reduce((total, child) => {
+            return total + getCategoryProductCount(child.id);
+        }, 0);
+        return directProductsCount + childProductsCount;
+    };
+
+    const textMatchedProducts = products.filter(product => {
+        if (!searchTerm) return true;
+        return product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+               product.barcode.includes(searchTerm);
+    });
+
+    const validCategoryIdsForFilter = new Set<number>();
+    textMatchedProducts.forEach(p => {
+        getAncestorCategoryIds(p.category_id).forEach(id => validCategoryIdsForFilter.add(id));
+    });
+
+    const availableCategoriesForFilter = categories.filter(c => validCategoryIdsForFilter.has(c.id));
+
+    const filteredProducts = textMatchedProducts.filter(product => {
+        if (selectedCategoryFilter === '') return true;
+        
+        const selectedCat = categories.find(c => c.name.toLowerCase() === selectedCategoryFilter.toLowerCase());
+        if (!selectedCat) return false; 
+
+        const validIds = getDescendantCategoryIds(selectedCat.id);
+        return validIds.includes(product.category_id);
     });
 
     return (
@@ -289,6 +402,12 @@ export function Dashboard() {
                             style={{ backgroundColor: activeTab === 'estoque' ? '#deff9a' : 'transparent', color: activeTab === 'estoque' ? '#000' : '#9ca3af', border: activeTab === 'estoque' ? 'none' : '1px solid #333', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}
                         >
                             📦 Gestão de Estoque
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('categorias')} 
+                            style={{ backgroundColor: activeTab === 'categorias' ? '#deff9a' : 'transparent', color: activeTab === 'categorias' ? '#000' : '#9ca3af', border: activeTab === 'categorias' ? 'none' : '1px solid #333', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                            📁 Categorias
                         </button>
                         <button 
                             onClick={() => setActiveTab('historico')} 
@@ -349,7 +468,7 @@ export function Dashboard() {
                                     type="password" 
                                     value={userPassword} 
                                     onChange={(e) => setUserPassword(e.target.value)} 
-                                    required={!editingUserId} // A senha só é obrigatória na criação
+                                    required={!editingUserId}
                                     placeholder={editingUserId ? "Deixe em branco para manter a atual" : "••••••••"}
                                     style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} 
                                 />
@@ -409,14 +528,95 @@ export function Dashboard() {
                 </div>
             )}
 
-            {/* ABA ESTOQUE E ABA HISTORICO MANTIDAS IGUAIS */}
+            {/* ABA DE CATEGORIAS */}
+            {activeTab === 'categorias' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.2fr', gap: '30px' }}>
+                    <div style={{ backgroundColor: '#111111', padding: '25px', borderRadius: '8px', border: '1px solid #222', height: 'fit-content' }}>
+                        <h2 style={{ color: '#deff9a', marginTop: 0, marginBottom: '20px', fontSize: '20px' }}>{editingCatId ? '📝 Editar Categoria' : '➕ Nova Categoria'}</h2>
+                        <form onSubmit={handleCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>Nome da Categoria</label>
+                                <input type="text" value={catName} onChange={e => setCatName(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>Breve Descrição</label>
+                                <input type="text" value={catDesc} onChange={e => setCatDesc(e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>Subcategoria de (Opcional)</label>
+                                <select value={catParentId} onChange={e => setCatParentId(e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }}>
+                                    <option value="">Nenhuma (Categoria Raiz)</option>
+                                    {categories.filter(c => c.id !== editingCatId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>Status Operacional</label>
+                                <select value={catStatus} onChange={e => setCatStatus(e.target.value as 'active'|'inactive')} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }}>
+                                    <option value="active">Ativa (Visível no Estoque)</option>
+                                    <option value="inactive">Inativa (Oculta/Arquivada)</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="submit" style={{ flex: 1, backgroundColor: '#deff9a', color: '#000', border: 'none', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>{editingCatId ? 'Salvar Edição' : 'Criar Categoria'}</button>
+                                {editingCatId && <button type="button" onClick={clearCategoryForm} style={{ backgroundColor: '#222', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', cursor: 'pointer' }}>Cancelar</button>}
+                            </div>
+                        </form>
+                    </div>
+
+                    <div style={{ backgroundColor: '#111111', padding: '25px', borderRadius: '8px', border: '1px solid #222' }}>
+                        <h2 style={{ color: '#deff9a', marginTop: 0, marginBottom: '20px', fontSize: '20px' }}>🗂️ Árvore de Categorias</h2>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '2px solid #222', color: '#9ca3af', fontSize: '14px' }}>
+                                    <th style={{ padding: '12px' }}>Nome / Hierarquia</th>
+                                    <th style={{ padding: '12px' }}>Descrição</th>
+                                    <th style={{ padding: '12px', textAlign: 'center' }}>Qtd. Produtos</th>
+                                    <th style={{ padding: '12px' }}>Status</th>
+                                    <th style={{ padding: '12px', textAlign: 'right' }}>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {categories.map(cat => {
+                                    const productCount = getCategoryProductCount(cat.id);
+                                    
+                                    return (
+                                        <tr key={cat.id} style={{ borderBottom: '1px solid #222' }}>
+                                            <td style={{ padding: '12px' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#fff' }}>{cat.name}</div>
+                                                {cat.parent_name && <div style={{ fontSize: '12px', color: '#9ca3af' }}>↳ Sub de: {cat.parent_name}</div>}
+                                            </td>
+                                            <td style={{ padding: '12px', color: '#9ca3af', fontSize: '13px' }}>{cat.description || '-'}</td>
+                                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                <span style={{ backgroundColor: '#222', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', color: productCount > 0 ? '#deff9a' : '#6b7280' }}>
+                                                    {productCount}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px' }}>
+                                                <span style={{ backgroundColor: cat.status === 'active' ? '#064e3b' : '#7f1d1d', color: cat.status === 'active' ? '#6ee7b7' : '#fca5a5', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                                                    {cat.status === 'active' ? 'ATIVA' : 'INATIVA'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                <button onClick={() => { setEditingCatId(cat.id); setCatName(cat.name); setCatDesc(cat.description || ''); setCatParentId(cat.parent_id ? cat.parent_id.toString() : ''); setCatStatus(cat.status); window.scrollTo(0, 0); }} style={{ backgroundColor: '#3b82f6', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', marginRight: '6px', cursor: 'pointer' }}>Editar</button>
+                                                <button onClick={() => handleDeleteCategory(cat.id)} style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}>Excluir</button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* ABA ESTOQUE */}
             {activeTab === 'estoque' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.2fr', gap: '30px' }}>
                     <div style={{ backgroundColor: '#111111', padding: '25px', borderRadius: '8px', border: '1px solid #222', height: 'fit-content' }}>
                         <h2 style={{ color: '#deff9a', marginTop: 0, marginBottom: '20px', fontSize: '20px' }}>
                             {editingId ? '📝 Editar Cadastro' : '➕ Adicionar ao Catálogo'}
                         </h2>
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <form onSubmit={handleProductSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <label style={{ fontSize: '13px', color: '#9ca3af' }}>Nome do Produto</label>
                                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} />
@@ -452,22 +652,35 @@ export function Dashboard() {
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ fontSize: '13px', color: '#9ca3af' }}>Categoria</label>
-                                <input 
-                                    type="text" 
-                                    value={category} 
-                                    onChange={(e) => setCategory(e.target.value)} 
-                                    required 
-                                    placeholder="Ex: Mercearia, Bebidas" 
-                                    list="category-suggestions" 
-                                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff' }} 
-                                />
-                                <datalist id="category-suggestions">
-                                    {uniqueCategories.map(cat => (
-                                        <option key={cat} value={cat} />
-                                    ))}
-                                </datalist>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px', position: 'relative' }}>
+                                    <label style={{ fontSize: '13px', color: '#9ca3af' }}>Categoria</label>
+                                    <input 
+                                        list="form-categories"
+                                        placeholder="🗂️ Selecione ou digite..."
+                                        value={productCategoryName} 
+                                        onChange={e => setProductCategoryName(e.target.value)} 
+                                        required 
+                                        style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', boxSizing: 'border-box' }} 
+                                    />
+                                    {productCategoryName && (
+                                        <button 
+                                            type="button"
+                                            onClick={() => setProductCategoryName('')} 
+                                            style={{ position: 'absolute', right: '10px', top: '30px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                    <datalist id="form-categories">
+                                        {categories.filter(c => c.status === 'active').map(c => (
+                                            <option key={c.id} value={c.name} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                                <button type="button" onClick={() => setActiveTab('categorias')} title="Gerenciar Categorias" style={{ backgroundColor: '#222', color: '#deff9a', border: '1px solid #333', padding: '0 15px', height: '39px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px' }}>
+                                    +
+                                </button>
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
@@ -475,7 +688,7 @@ export function Dashboard() {
                                     {editingId ? 'Atualizar' : 'Cadastrar Produto'}
                                 </button>
                                 {editingId && (
-                                    <button type="button" onClick={clearForm} style={{ backgroundColor: '#222', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', cursor: 'pointer' }}>
+                                    <button type="button" onClick={clearProductForm} style={{ backgroundColor: '#222', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', cursor: 'pointer' }}>
                                         Cancelar
                                     </button>
                                 )}
@@ -494,16 +707,30 @@ export function Dashboard() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 style={{ flex: 1, padding: '12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', fontSize: '14px' }}
                             />
-                            <select 
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                style={{ width: '220px', padding: '12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', fontSize: '14px', cursor: 'pointer' }}
-                            >
-                                <option value="">Todas as Categorias</option>
-                                {uniqueCategories.map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                            </select>
+                            
+                            <div style={{ position: 'relative', width: '300px' }}>
+                                <input 
+                                    list="dynamic-categories"
+                                    placeholder="🗂️ Filtrar por Categoria..."
+                                    value={selectedCategoryFilter}
+                                    onChange={e => setSelectedCategoryFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#fff', fontSize: '14px', boxSizing: 'border-box' }}
+                                />
+                                {selectedCategoryFilter && (
+                                    <button 
+                                        onClick={() => setSelectedCategoryFilter('')} 
+                                        style={{ position: 'absolute', right: '10px', top: '12px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
+                                        title="Limpar filtro de categoria"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                                <datalist id="dynamic-categories">
+                                    {availableCategoriesForFilter.map(c => (
+                                        <option key={c.id} value={c.name} />
+                                    ))}
+                                </datalist>
+                            </div>
                         </div>
                         
                         {filteredProducts.length === 0 ? (
@@ -535,7 +762,9 @@ export function Dashboard() {
                                                 {Number(product.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                             </td>
                                             <td style={{ padding: '12px' }}>
-                                                <span style={{ backgroundColor: '#222', padding: '4px 8px', borderRadius: '4px', fontSize: '13px' }}>{product.category}</span>
+                                                <span style={{ backgroundColor: '#222', padding: '4px 8px', borderRadius: '4px', fontSize: '13px' }}>
+                                                    {getCategoryName(product.category_id)}
+                                                </span>
                                             </td>
                                             <td style={{ padding: '12px', fontWeight: 'bold', fontSize: '16px', color: product.estoque_atual > 0 ? '#fff' : '#ef4444' }}>
                                                 {product.estoque_atual} un.
@@ -555,8 +784,8 @@ export function Dashboard() {
                                                 </div>
                                             </td>
                                             <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                <button onClick={() => startEdit(product)} style={{ backgroundColor: '#3b82f6', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', marginRight: '6px', cursor: 'pointer', fontSize: '13px' }}>Editar</button>
-                                                <button onClick={() => handleDelete(product.id)} style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>Excluir</button>
+                                                <button onClick={() => startEditProduct(product)} style={{ backgroundColor: '#3b82f6', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', marginRight: '6px', cursor: 'pointer', fontSize: '13px' }}>Editar</button>
+                                                <button onClick={() => handleDeleteProduct(product.id)} style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>Excluir</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -567,6 +796,7 @@ export function Dashboard() {
                 </div>
             )}
 
+            {/* ABA HISTORICO */}
             {activeTab === 'historico' && (
                 <div style={{ backgroundColor: '#111111', padding: '25px', borderRadius: '8px', border: '1px solid #222' }}>
                     <h2 style={{ color: '#deff9a', marginTop: 0, marginBottom: '20px', fontSize: '20px' }}>🧾 Registro de Auditoria</h2>
