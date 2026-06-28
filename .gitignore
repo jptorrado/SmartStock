@@ -143,3 +143,6 @@ db_data/
 # Test results
 jest-test-results.json
 .jest-test-results.json
+
+# VSCode Directory
+.vscode/

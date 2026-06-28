@@ -15,11 +15,20 @@ export class ProductController {
 
     async create(req: Request, res: Response) {
         try {
-            const { name, barcode, price, category } = req.body;
-            if (!name || !barcode || price === undefined || !category) {
+            // Agora extraímos category_id corretamente do React
+            const { name, barcode, price, category_id } = req.body;
+            
+            if (!name || !barcode || price === undefined || !category_id) {
                 return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
             }
-            await this.productService.registerProduct({ name, barcode, price: Number(price), category });
+            
+            await this.productService.registerProduct({ 
+                name, 
+                barcode, 
+                price: Number(price), 
+                category_id: Number(category_id) 
+            });
+            
             return res.status(201).json({ message: 'Produto cadastrado com sucesso.' });
         } catch (error: any) {
             return res.status(400).json({ error: error.message });
@@ -29,8 +38,20 @@ export class ProductController {
     async update(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const { name, barcode, price, category } = req.body;
-            await this.productService.updateProduct(Number(id), { name, barcode, price: Number(price), category });
+            const { name, barcode, price, category_id } = req.body;
+
+            // Adicionada validação de campos também na edição por segurança
+            if (!name || !barcode || price === undefined || !category_id) {
+                return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+            }
+
+            await this.productService.updateProduct(Number(id), { 
+                name, 
+                barcode, 
+                price: Number(price), 
+                category_id: Number(category_id) 
+            });
+            
             return res.status(200).json({ message: 'Produto atualizado com sucesso.' });
         } catch (error: any) {
             return res.status(400).json({ error: error.message });

@@ -7,7 +7,7 @@ export class ProductService {
         return await this.productRepository.findAll();
     }
 
-    async registerProduct(data: { name: string; barcode: string; price: number; category: string }) {
+    async registerProduct(data: { name: string; barcode: string; price: number; category_id: number }) {
         const duplicated = await this.productRepository.findByBarcode(data.barcode);
         if (duplicated) {
             throw new Error('Não é permitido cadastrar dois produtos com o mesmo código de barras.');
@@ -15,7 +15,7 @@ export class ProductService {
         await this.productRepository.create(data);
     }
 
-    async updateProduct(id: number, data: { name: string; barcode: string; price: number; category: string }) {
+    async updateProduct(id: number, data: { name: string; barcode: string; price: number; category_id: number }) {
         const existingProduct = await this.productRepository.findByBarcode(data.barcode);
         // Se achou o código de barras, mas pertence a OUTRO produto, bloqueia a edição
         if (existingProduct && existingProduct.id !== id) {

@@ -1,7 +1,8 @@
-import { Connection } from 'mysql2/promise';
+import { DatabaseManager } from '../database/DatabaseManager';
 
 export class StockRepository {
-    constructor(private db: Connection) {}
+    // 1. Injeção do Padrão Singleton
+    private db = DatabaseManager.getInstance();
 
     // Alterado para buscar todos os campos (necessário para a tabela do Dashboard)
     async getAllProducts(): Promise<any[]> {
@@ -9,17 +10,19 @@ export class StockRepository {
         return rows as any[];
     }
 
-    async createProduct(name: string, barcode: string, price: number, category: string): Promise<void> {
+    // 2. Alteração de 'category: string' para 'category_id: number'
+    async createProduct(name: string, barcode: string, price: number, category_id: number): Promise<void> {
         await this.db.execute(
-            'INSERT INTO products (name, barcode, price, category, estoque_atual) VALUES (?, ?, ?, ?, 0)',
-            [name, barcode, price, category]
+            'INSERT INTO products (name, barcode, price, category_id, estoque_atual) VALUES (?, ?, ?, ?, 0)',
+            [name, barcode, price, category_id]
         );
     }
 
-    async updateProduct(id: number, name: string, barcode: string, price: number, category: string): Promise<void> {
+    // 2. Alteração de 'category: string' para 'category_id: number'
+    async updateProduct(id: number, name: string, barcode: string, price: number, category_id: number): Promise<void> {
         await this.db.execute(
-            'UPDATE products SET name = ?, barcode = ?, price = ?, category = ? WHERE id = ?',
-            [name, barcode, price, category, id]
+            'UPDATE products SET name = ?, barcode = ?, price = ?, category_id = ? WHERE id = ?',
+            [name, barcode, price, category_id, id]
         );
     }
 
@@ -38,6 +41,7 @@ export class StockRepository {
             [produtoId, quantidade, 'entrada']
         );
     }
+
     // --- MÉTODOS NOVOS DA US04 ---
     async getStock(produtoId: number): Promise<number> {
         const [rows]: any = await this.db.execute('SELECT estoque_atual FROM products WHERE id = ?', [produtoId]);
@@ -58,6 +62,7 @@ export class StockRepository {
             [produtoId, quantidade, 'saida']
         );
     }
+    
     async getMovements(): Promise<any[]> {
         const [rows] = await this.db.execute(`
             SELECT m.id, m.tipo, m.quantidade, m.data_hora, p.name AS produto_nome 
