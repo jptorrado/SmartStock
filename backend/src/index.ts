@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
+dotenv.config();
 
 import { DatabaseManager } from './database/DatabaseManager';
 import { UserRepository } from './repositories/UserRepository';

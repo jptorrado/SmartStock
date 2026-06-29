@@ -13,15 +13,19 @@ export class DatabaseManager {
      */
     public static getInstance(): Pool {
         if (!DatabaseManager.instance) {
-            console.log('⚙️ Inicializando o Pool de Conexões MySQL (Singleton)...');
-            
+            const isDocker = process.env.IS_DOCKER === 'true';
+            const portaConexao = isDocker ? 3306 : Number(process.env.DB_PORT) || 3306;
+
+            console.log(`⚙️ Inicializando o Pool de Conexões MySQL (Singleton) na porta ${isDocker ?'3306' :`${portaConexao}` }`);
+
             DatabaseManager.instance = mysql.createPool({
                 host: process.env.DB_HOST as string,
                 user: process.env.DB_USER as string,
                 password: process.env.DB_PASS as string,
+                port: portaConexao,
                 database: process.env.DB_NAME as string,
                 waitForConnections: true,
-                connectionLimit: 10, // Limite de conexões ativas reutilizáveis simultaneamente
+                connectionLimit: 10,
                 queueLimit: 0
             });
         }

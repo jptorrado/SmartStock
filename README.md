@@ -17,19 +17,23 @@ A forma mais segura e isolada de executar a aplicação é através do Docker.
 ### 1. Configuração do Arquivo `.env` na Raiz
 Na pasta raiz do projeto (onde se encontra o arquivo `docker-compose.yml`), crie um arquivo chamado `.env`. Ele centralizará todas as variáveis de ambiente repassadas para os contêineres:
 
+```env
 DB_HOST=db
 DB_USER=root
-DB_PASS=(Insira aqui uma senha segura)
+DB_PASS= # Insira aqui uma senha segura
 DB_NAME=estoque_db
 DB_PORT=3306
 PORT=3000
 FRONTEND_PORT=5173
-JWT_SECRET=(Insira aqui um hash de 64 caracteres)
+JWT_SECRET= # Insira aqui um hash de 64 caracteres
+```
 
 ### 2. Subindo a Aplicação
 Abra o terminal na raiz do projeto e execute:
 
+```bash
 docker-compose up -d --build
+```
 
 ---
 
@@ -45,27 +49,37 @@ Para desenvolvimento direto na máquina, siga o fluxo abaixo para levantar cada 
 ### 2. Configuração e Inicialização do Back-end
 Navegue até o diretório `backend` e crie o seu arquivo `.env` local com as seguintes variáveis:
 
+```env
 DB_HOST=localhost
-DB_USER=(Usuário do seu bd)
-DB_PASS=(Senha do seu bd)
-DB_NAME=SmartStock
-JWT_SECRET=(Insira aqui um hash de 64 caracteres)
+DB_USER=  # Usuário do seu bd
+DB_PASS= # Senha do seu bd
+DB_NAME= # Nome escolhido na criação do bd
+JWT_SECRET= # Insira aqui um hash de 64 caracteres
 PORT=3000
+DB_PORT=3306
+```
 
 Comandos para rodar:
+```bash
 cd backend
 npm install
 npm run dev
+```
 
 ### 3. Configuração e Inicialização do Front-end
 Navegue até o diretório `frontend` e crie o seu arquivo `.env` local com a seguinte variável:
 
-VITE_API_URL=http://localhost:3000
+```env
+VITE_API_URL=http://localhost:3000 #Troque 3000 pela porta(PORT do backend) se mudar
+FRONTEND_PORT=5173
+```
 
 Comandos para rodar:
+```bash
 cd frontend
 npm install
 npm run dev
+```
 
 ---
 
@@ -93,7 +107,9 @@ Os testes operam com isolamento total do banco de dados utilizando a técnica de
 ### Como executar
 Abra o terminal, navegue até a pasta do back-end e execute o comando de testes:
 
+```bash
 cd backend
 npm run test
+```
 
 O Jest varrerá o sistema, validando a matemática e as travas de segurança do `StockService`, retornando o relatório de aprovação no console.
