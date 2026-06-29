@@ -10,6 +10,20 @@ O **SmartStock** é uma plataforma desenvolvida para o controle rigoroso de inve
 
 ---
 
+## ⚙️ Pré-requisitos
+
+Antes de iniciar, certifique-se de ter as ferramentas necessárias instaladas em seu ambiente.:
+
+**Para execução via Docker (Recomendado):**
+*   **Docker:** Engine rodando ativamente.
+*   **Docker Compose** (Geralmente incluso no Docker Desktop).
+
+**Para execução Local:**
+*   **Node.js:** Versão 18 LTS ou superior.
+*   **MySQL Server:** Versão 8.0+ instalada e rodando localmente.
+
+---
+
 ## 🐳 Execução via Docker (Ambiente Recomendado)
 
 A forma mais segura e isolada de executar a aplicação é através do Docker. 
